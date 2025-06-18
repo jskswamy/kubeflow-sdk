@@ -35,6 +35,12 @@ dependencies = [
   "kubeflow_trainer_api@git+https://github.com/kubeflow/trainer.git@master#subdirectory=api/python_api"
 ]
 
+[project.optional-dependencies]
+test = [
+  "pytest>=7.0.0",
+  "pytest-mock>=3.10.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/kubeflow/trainer"
 Documentation = "https://www.kubeflow.org/docs/components/trainer/"
@@ -48,3 +54,14 @@ path = "kubeflow/trainer/__init__.py"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+    "-v",
+    "--tb=short",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
