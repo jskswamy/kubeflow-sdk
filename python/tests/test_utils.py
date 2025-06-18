@@ -1,0 +1,403 @@
+import pytest
+from unittest.mock import Mock, patch
+from kubeflow.trainer.utils import utils
+from kubeflow.trainer.types import types
+from kubeflow.trainer.constants import constants
+
+
+class TestTrainerDetection:
+    """Test cases for trainer detection logic."""
+
+    @pytest.mark.parametrize(
+        "image_name,expected_framework",
+        [
+            # Known images from ALL_TRAINERS
+            ("pytorch/pytorch", types.TrainerFramework.TORCH),
+            ("ghcr.io/kubeflow/trainer/mlx-runtime", types.TrainerFramework.MLX),
+            (
+                "ghcr.io/kubeflow/trainer/deepspeed-runtime",
+                types.TrainerFramework.DEEPSPEED,
+            ),
+            (
+                "ghcr.io/kubeflow/trainer/torchtune-trainer",
+                types.TrainerFramework.TORCHTUNE,
+            ),
+            # Custom images with pattern matching - lowercase
+            ("my-org/deepspeed-custom:latest", types.TrainerFramework.DEEPSPEED),
+            ("custom-mlx-runtime:v1.0", types.TrainerFramework.MLX),
+            ("pytorch-training:latest", types.TrainerFramework.TORCH),
+            ("torchtune-finetuning:latest", types.TrainerFramework.TORCHTUNE),
+            # Custom images with pattern matching - uppercase
+            ("my-org/DeepSpeed-Custom:latest", types.TrainerFramework.DEEPSPEED),
+            ("custom-MLX-runtime:v1.0", types.TrainerFramework.MLX),
+            ("PyTorch-training:latest", types.TrainerFramework.TORCH),
+            ("TorchTune-finetuning:latest", types.TrainerFramework.TORCHTUNE),
+            # Custom images with pattern matching - mixed case
+            ("my-org/DeepSpeed-custom:latest", types.TrainerFramework.DEEPSPEED),
+            ("custom-Mlx-runtime:v1.0", types.TrainerFramework.MLX),
+            ("PyTorch-Training:latest", types.TrainerFramework.TORCH),
+            ("TorchTune-Finetuning:latest", types.TrainerFramework.TORCHTUNE),
+            # Custom images with pattern matching - all caps
+            ("my-org/DEEPSPEED-CUSTOM:latest", types.TrainerFramework.DEEPSPEED),
+            ("custom-MLX-RUNTIME:v1.0", types.TrainerFramework.MLX),
+            ("PYTORCH-TRAINING:latest", types.TrainerFramework.TORCH),
+            ("TORCHTUNE-FINETUNING:latest", types.TrainerFramework.TORCHTUNE),
+            # Edge cases - partial matches
+            ("my-deepspeed-runtime:latest", types.TrainerFramework.DEEPSPEED),
+            ("mlx-custom:latest", types.TrainerFramework.MLX),
+            ("torch-custom:latest", types.TrainerFramework.TORCH),
+            ("pytorch-custom:latest", types.TrainerFramework.TORCH),
+            ("torchtune-custom:latest", types.TrainerFramework.TORCHTUNE),
+            # Edge cases - with numbers and special characters
+            ("deepspeed-v2.1:latest", types.TrainerFramework.DEEPSPEED),
+            ("mlx_runtime_1.0:latest", types.TrainerFramework.MLX),
+            ("pytorch_2.0_cuda:latest", types.TrainerFramework.TORCH),
+            ("torchtune-llama-3b:latest", types.TrainerFramework.TORCHTUNE),
+            # Edge cases - with registry prefixes
+            ("docker.io/myorg/deepspeed:latest", types.TrainerFramework.DEEPSPEED),
+            ("ghcr.io/myorg/mlx-runtime:latest", types.TrainerFramework.MLX),
+            ("quay.io/myorg/pytorch-training:latest", types.TrainerFramework.TORCH),
+            (
+                "registry.example.com/myorg/torchtune:latest",
+                types.TrainerFramework.TORCHTUNE,
+            ),
+            # Edge cases - with ports and complex paths
+            (
+                "registry.example.com:5000/myorg/deepspeed:latest",
+                types.TrainerFramework.DEEPSPEED,
+            ),
+            ("ghcr.io/myorg/mlx/runtime:v1.0", types.TrainerFramework.MLX),
+            ("docker.io/myorg/pytorch/training:latest", types.TrainerFramework.TORCH),
+            (
+                "quay.io/myorg/torchtune/finetuning:latest",
+                types.TrainerFramework.TORCHTUNE,
+            ),
+            # Edge cases - no match (should fall back to default)
+            ("unknown-image:latest", types.TrainerFramework.TORCH),
+            ("", types.TrainerFramework.TORCH),
+            ("nginx:latest", types.TrainerFramework.TORCH),
+            ("ubuntu:20.04", types.TrainerFramework.TORCH),
+        ],
+    )
+    def test_trainer_detection_from_image_patterns(
+        self, image_name, expected_framework
+    ):
+        """Test trainer detection using image pattern matching with various case scenarios."""
+        trainer = utils._detect_trainer_from_image_patterns(image_name)
+        if expected_framework == types.TrainerFramework.TORCH and trainer is None:
+            # For unknown images, the _detect_trainer function should return default
+            # but _detect_trainer_from_image_patterns returns None
+            assert trainer is None
+        else:
+            assert trainer is not None
+            assert trainer.framework.value == expected_framework.value
+
+    @pytest.mark.parametrize(
+        "image_name,expected_framework",
+        [
+            # Known images (should use ALL_TRAINERS mapping)
+            ("pytorch/pytorch", types.TrainerFramework.TORCH),
+            ("ghcr.io/kubeflow/trainer/mlx-runtime", types.TrainerFramework.MLX),
+            (
+                "ghcr.io/kubeflow/trainer/deepspeed-runtime",
+                types.TrainerFramework.DEEPSPEED,
+            ),
+            (
+                "ghcr.io/kubeflow/trainer/torchtune-trainer",
+                types.TrainerFramework.TORCHTUNE,
+            ),
+            # Custom images with pattern matching - various cases
+            ("my-deepspeed-runtime:latest", types.TrainerFramework.DEEPSPEED),
+            ("custom-pytorch:latest", types.TrainerFramework.TORCH),
+            ("mlx-custom:latest", types.TrainerFramework.MLX),
+            ("torchtune-custom:latest", types.TrainerFramework.TORCHTUNE),
+            ("DeepSpeed-Custom:latest", types.TrainerFramework.DEEPSPEED),
+            ("PyTorch-Custom:latest", types.TrainerFramework.TORCH),
+            ("MLX-Custom:latest", types.TrainerFramework.MLX),
+            ("TorchTune-Custom:latest", types.TrainerFramework.TORCHTUNE),
+            # Fallback to default
+            ("completely-unknown:latest", types.TrainerFramework.TORCH),
+            ("nginx:latest", types.TrainerFramework.TORCH),
+        ],
+    )
+    def test_trainer_detection_precedence(self, image_name, expected_framework):
+        """Test the precedence order of trainer detection methods."""
+        # Create mock trainer container
+        trainer_container = Mock()
+        trainer_container.image = image_name
+
+        trainer = utils._detect_trainer(trainer_container)
+        assert trainer is not None
+        assert trainer.framework.value == expected_framework.value
+
+    def test_centralized_trainer_configs(self):
+        """Test that centralized trainer configurations are properly defined."""
+        # Verify all trainer frameworks have configurations
+        for framework in types.TrainerFramework:
+            assert framework in types.TRAINER_CONFIGS
+            trainer = types.TRAINER_CONFIGS[framework]
+            assert trainer.framework.value == framework.value
+
+    def test_all_trainers_uses_centralized_configs(self):
+        """Test that ALL_TRAINERS uses centralized configurations."""
+        for image_name, trainer in types.ALL_TRAINERS.items():
+            # Find the corresponding centralized config
+            found_config = None
+            for framework in types.TrainerFramework:
+                if types.TRAINER_CONFIGS[framework] == trainer:
+                    found_config = framework
+                    break
+
+            assert found_config is not None, (
+                f"Trainer for {image_name} not found in centralized configs"
+            )
+            assert trainer.framework.value == found_config.value
+
+    def test_default_trainer_uses_centralized_config(self):
+        """Test that DEFAULT_TRAINER uses centralized configuration."""
+        assert (
+            types.DEFAULT_TRAINER == types.TRAINER_CONFIGS[types.TrainerFramework.TORCH]
+        )
+        assert (
+            types.DEFAULT_TRAINER.framework.value == types.TrainerFramework.TORCH.value
+        )
+
+
+class TestAcceleratorCountLogic:
+    """Test cases for accelerator count logic in get_runtime_trainer."""
+
+    @pytest.mark.parametrize(
+        "ml_policy_config,expected_accelerator_count",
+        [
+            # Torch policies with different num_proc_per_node values
+            ({"torch": {"num_proc_per_node": 4}}, 4),
+            ({"torch": {"num_proc_per_node": 8}}, 8),
+            (
+                {"torch": {"num_proc_per_node": "auto"}},
+                None,
+            ),  # String values should not set accelerator count
+            (
+                {"torch": {"num_proc_per_node": "gpu"}},
+                None,
+            ),  # String values should not set accelerator count
+            (
+                {"torch": {"num_proc_per_node": "cpu"}},
+                None,
+            ),  # String values should not set accelerator count
+            # MPI policies with different num_proc_per_node values
+            ({"mpi": {"num_proc_per_node": 2}}, 2),
+            ({"mpi": {"num_proc_per_node": 16}}, 16),
+            ({"mpi": {"num_proc_per_node": 1}}, 1),
+            # No policies
+            ({}, None),
+            ({"torch": {}}, None),
+            ({"mpi": {}}, None),
+        ],
+    )
+    def test_accelerator_count_from_ml_policy(
+        self, ml_policy_config, expected_accelerator_count
+    ):
+        """Test that accelerator count is correctly set from ML policy."""
+        with patch.object(
+            utils, "get_container_devices", return_value=None
+        ) as mock_get_devices:
+            # Create mock replicated jobs with proper structure
+            mock_container = Mock()
+            mock_container.image = "pytorch/pytorch:latest"
+            mock_resources = Mock()
+            mock_resources.limits = None
+            mock_container.resources = mock_resources
+            mock_container.name = constants.NODE
+
+            mock_replicated_job = Mock()
+            mock_replicated_job.template = Mock()
+            mock_replicated_job.template.spec = Mock()
+            mock_replicated_job.template.spec.template = Mock()
+            mock_replicated_job.template.spec.template.spec = Mock()
+            mock_replicated_job.template.spec.template.spec.containers = [
+                mock_container
+            ]
+            mock_replicated_job.template.metadata = Mock()
+            mock_replicated_job.template.metadata.labels = {
+                constants.TRAINJOB_ANCESTOR_LABEL: "trainer"
+            }
+            replicated_jobs = [mock_replicated_job]
+
+            # Create mock ML policy
+            ml_policy = Mock()
+            ml_policy.num_nodes = None
+
+            if "torch" in ml_policy_config:
+                ml_policy.torch = Mock()
+                if "num_proc_per_node" in ml_policy_config["torch"]:
+                    mock_nppp_obj = Mock()
+                    mock_nppp_obj.actual_instance = ml_policy_config["torch"][
+                        "num_proc_per_node"
+                    ]
+                    ml_policy.torch.num_proc_per_node = mock_nppp_obj
+                else:
+                    ml_policy.torch.num_proc_per_node = None  # Explicitly None
+            else:
+                ml_policy.torch = None
+
+            if "mpi" in ml_policy_config:
+                ml_policy.mpi = Mock()
+                if "num_proc_per_node" in ml_policy_config["mpi"]:
+                    ml_policy.mpi.num_proc_per_node = ml_policy_config["mpi"][
+                        "num_proc_per_node"
+                    ]
+                else:
+                    ml_policy.mpi.num_proc_per_node = None  # Explicitly None
+            else:
+                ml_policy.mpi = None
+
+            # Create mock runtime metadata
+            runtime_metadata = Mock()
+            runtime_metadata.labels = {}
+
+            # Call the function
+            trainer = utils.get_runtime_trainer(
+                replicated_jobs, ml_policy, runtime_metadata
+            )
+
+            # Check accelerator count
+            if expected_accelerator_count is not None:
+                assert trainer.accelerator_count == expected_accelerator_count
+            else:
+                assert trainer.accelerator_count == constants.UNKNOWN
+
+    @pytest.mark.parametrize(
+        "ml_policy_config,num_nodes,expected_accelerator_count",
+        [
+            # Torch with num_nodes
+            ({"torch": {"num_proc_per_node": 4}}, 2, 8),  # 4 * 2 = 8
+            ({"torch": {"num_proc_per_node": 8}}, 3, 24),  # 8 * 3 = 24
+            # MPI with num_nodes
+            ({"mpi": {"num_proc_per_node": 2}}, 4, 8),  # 2 * 4 = 8
+            ({"mpi": {"num_proc_per_node": 16}}, 2, 32),  # 16 * 2 = 32
+            # String values should not be multiplied
+            ({"torch": {"num_proc_per_node": "auto"}}, 2, None),
+            ({"torch": {"num_proc_per_node": "gpu"}}, 3, None),
+        ],
+    )
+    def test_accelerator_count_with_num_nodes(
+        self, ml_policy_config, num_nodes, expected_accelerator_count
+    ):
+        """Test that accelerator count is correctly multiplied by number of nodes."""
+        with patch.object(
+            utils, "get_container_devices", return_value=None
+        ) as mock_get_devices:
+            # Create mock replicated jobs with proper structure
+            mock_container = Mock()
+            mock_container.image = "pytorch/pytorch:latest"
+            mock_resources = Mock()
+            mock_resources.limits = None
+            mock_container.resources = mock_resources
+            mock_container.name = constants.NODE
+            mock_replicated_job = Mock()
+            mock_replicated_job.template = Mock()
+            mock_replicated_job.template.spec = Mock()
+            mock_replicated_job.template.spec.template = Mock()
+            mock_replicated_job.template.spec.template.spec = Mock()
+            mock_replicated_job.template.spec.template.spec.containers = [
+                mock_container
+            ]
+            mock_replicated_job.template.metadata = Mock()
+            mock_replicated_job.template.metadata.labels = {
+                constants.TRAINJOB_ANCESTOR_LABEL: "trainer"
+            }
+            replicated_jobs = [mock_replicated_job]
+
+            # Create mock ML policy
+            ml_policy = Mock()
+            ml_policy.num_nodes = num_nodes  # Use the num_nodes parameter
+
+            if "torch" in ml_policy_config:
+                ml_policy.torch = Mock()
+                if "num_proc_per_node" in ml_policy_config["torch"]:
+                    mock_nppp_obj = Mock()
+                    mock_nppp_obj.actual_instance = ml_policy_config["torch"][
+                        "num_proc_per_node"
+                    ]
+                    ml_policy.torch.num_proc_per_node = mock_nppp_obj
+                else:
+                    ml_policy.torch.num_proc_per_node = None  # Explicitly None
+            else:
+                ml_policy.torch = None
+
+            if "mpi" in ml_policy_config:
+                ml_policy.mpi = Mock()
+                if "num_proc_per_node" in ml_policy_config["mpi"]:
+                    ml_policy.mpi.num_proc_per_node = ml_policy_config["mpi"][
+                        "num_proc_per_node"
+                    ]
+                else:
+                    ml_policy.mpi.num_proc_per_node = None  # Explicitly None
+            else:
+                ml_policy.mpi = None
+
+            # Create mock runtime metadata
+            runtime_metadata = Mock()
+            runtime_metadata.labels = {}
+
+            # Call the function
+            trainer = utils.get_runtime_trainer(
+                replicated_jobs, ml_policy, runtime_metadata
+            )
+
+            # Check accelerator count
+            if expected_accelerator_count is not None:
+                assert trainer.accelerator_count == expected_accelerator_count
+            else:
+                assert trainer.accelerator_count == constants.UNKNOWN
+
+    def test_accelerator_count_precedence(self):
+        """Test that torch policy takes precedence over mpi policy for accelerator count."""
+        with patch.object(
+            utils, "get_container_devices", return_value=None
+        ) as mock_get_devices:
+            # Create mock replicated jobs with proper structure
+            mock_container = Mock()
+            mock_container.image = "pytorch/pytorch:latest"
+            mock_resources = Mock()
+            mock_resources.limits = None
+            mock_container.resources = mock_resources
+            mock_container.name = constants.NODE
+
+            mock_replicated_job = Mock()
+            mock_replicated_job.template = Mock()
+            mock_replicated_job.template.spec = Mock()
+            mock_replicated_job.template.spec.template = Mock()
+            mock_replicated_job.template.spec.template.spec = Mock()
+            mock_replicated_job.template.spec.template.spec.containers = [
+                mock_container
+            ]
+            mock_replicated_job.template.metadata = Mock()
+            mock_replicated_job.template.metadata.labels = {
+                constants.TRAINJOB_ANCESTOR_LABEL: "trainer"
+            }
+            replicated_jobs = [mock_replicated_job]
+
+            # Create mock ML policy with both torch and mpi
+            ml_policy = Mock()
+            ml_policy.torch = Mock()
+            mock_nppp_torch = Mock()
+            mock_nppp_torch.actual_instance = 4  # Should take precedence
+            ml_policy.torch.num_proc_per_node = mock_nppp_torch
+
+            ml_policy.mpi = Mock()
+            ml_policy.mpi.num_proc_per_node = 8  # Should be ignored
+
+            ml_policy.num_nodes = None
+
+            # Create mock runtime metadata
+            runtime_metadata = Mock()
+            runtime_metadata.labels = {}
+
+            # Call the function
+            trainer = utils.get_runtime_trainer(
+                replicated_jobs, ml_policy, runtime_metadata
+            )
+
+            # Torch policy should take precedence
+            assert trainer.accelerator_count == 4

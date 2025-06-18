@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import inspect
 import os
 import queue
@@ -107,6 +108,74 @@ def get_runtime_trainer_container(
     return None
 
 
+def _detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Trainer]:
+    """
+    Detect trainer type based on image name patterns using regex.
+
+    This method uses pattern matching on the image name to determine
+    the likely trainer type.
+
+    Args:
+        image_name: The container image name
+
+    Returns:
+        Trainer object if detected, None otherwise
+    """
+    # DeepSpeed patterns
+    if re.search(r"deepspeed", image_name, re.IGNORECASE):
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.DEEPSPEED])
+
+    # MLX patterns
+    if re.search(r"mlx", image_name, re.IGNORECASE):
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.MLX])
+
+    # TorchTune patterns (check before PyTorch to avoid conflicts)
+    if re.search(r"torchtune", image_name, re.IGNORECASE):
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.TORCHTUNE])
+
+    # PyTorch patterns (more specific to avoid matching torchtune)
+    if re.search(r"pytorch", image_name, re.IGNORECASE):
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.TORCH])
+
+    # Generic torch patterns (but not torchtune)
+    if re.search(r"^torch(?!tune)", image_name, re.IGNORECASE):
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.TORCH])
+
+    return None
+
+
+def _detect_trainer(
+    trainer_container: models.IoK8sApiCoreV1Container,
+) -> types.Trainer:
+    """
+    Detect trainer type with precedence logic.
+
+    This method implements the precedence order:
+    1. Check existing ALL_TRAINERS mapping (backward compatibility)
+    2. Use image pattern matching
+    3. Fall back to DEFAULT_TRAINER
+
+    Args:
+        trainer_container: The trainer container object
+
+    Returns:
+        Trainer object
+    """
+    image_name = trainer_container.image.split(":")[0]
+
+    # 1. Check existing ALL_TRAINERS mapping (backward compatibility)
+    if image_name in types.ALL_TRAINERS:
+        return copy.deepcopy(types.ALL_TRAINERS[image_name])
+
+    # 2. Use image pattern matching
+    trainer = _detect_trainer_from_image_patterns(image_name)
+    if trainer:
+        return trainer
+
+    # 3. Fall back to DEFAULT_TRAINER
+    return copy.deepcopy(types.DEFAULT_TRAINER)
+
+
 def get_runtime_trainer(
     replicated_jobs: List[models.JobsetV1alpha2ReplicatedJob],
     ml_policy: models.TrainerV1alpha1MLPolicy,
@@ -121,20 +190,19 @@ def get_runtime_trainer(
     if not (trainer_container and trainer_container.image):
         raise Exception(f"Runtime doesn't have trainer container {replicated_jobs}")
 
-    # Extract image name from the container image to get appropriate Trainer.
-    image_name = trainer_container.image.split(":")[0]
-    trainer = types.ALL_TRAINERS.get(image_name, types.DEFAULT_TRAINER)
+    # Use the new detection logic with fallback
+    trainer = _detect_trainer(trainer_container)
 
     # Get the container devices.
     if devices := get_container_devices(trainer_container.resources):
         _, trainer.accelerator_count = devices
 
     # Torch and MPI plugins override accelerator count.
-    if ml_policy.torch and ml_policy.torch.num_proc_per_node:
+    if ml_policy.torch and ml_policy.torch.num_proc_per_node is not None:
         num_proc = ml_policy.torch.num_proc_per_node.actual_instance
         if isinstance(num_proc, int):
             trainer.accelerator_count = num_proc
-    elif ml_policy.mpi and ml_policy.mpi.num_proc_per_node:
+    elif ml_policy.mpi and ml_policy.mpi.num_proc_per_node is not None:
         trainer.accelerator_count = ml_policy.mpi.num_proc_per_node
 
     # Multiply accelerator_count by the number of nodes.
@@ -212,7 +280,7 @@ def get_trainjob_node_step(
         # TODO (andreyvelich): We should also override the device_count
         # based on OMPI_MCA_orte_set_default_slots value. Right now, it is hard to do
         # since we inject this env only to the Launcher Pod.
-        step.name = f"{constants.NODE}-{job_index+1}"
+        step.name = f"{constants.NODE}-{job_index + 1}"
 
     if container.env:
         for env in container.env:

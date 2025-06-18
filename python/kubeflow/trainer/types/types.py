@@ -21,6 +21,15 @@ from typing import Callable, Dict, List, Optional, Union
 from kubeflow.trainer.constants import constants
 
 
+# Trainer framework constants for easy reference
+class TrainerFramework(Enum):
+    """Trainer framework constants."""
+    TORCH = "torch"
+    DEEPSPEED = "deepspeed"
+    MLX = "mlx"
+    TORCHTUNE = "torchtune"
+
+
 # Configuration for the Custom Trainer.
 @dataclass
 class CustomTrainer:
@@ -230,28 +239,14 @@ class Initializer:
     model: Optional[HuggingFaceModelInitializer] = None
 
 
-# The dict where key is the container image and value its representation.
-# Each Trainer representation defines trainer parameters (e.g. type, framework, entrypoint).
-# TODO (andreyvelich): We should allow user to overrides the default image names.
-ALL_TRAINERS: Dict[str, Trainer] = {
-    # Custom Trainers.
-    "pytorch/pytorch": Trainer(
+# Centralized trainer configurations to eliminate duplication
+TRAINER_CONFIGS: Dict[TrainerFramework, Trainer] = {
+    TrainerFramework.TORCH: Trainer(
         trainer_type=TrainerType.CUSTOM_TRAINER,
         framework=Framework.TORCH,
         entrypoint=[constants.TORCH_ENTRYPOINT],
     ),
-    "ghcr.io/kubeflow/trainer/mlx-runtime": Trainer(
-        trainer_type=TrainerType.CUSTOM_TRAINER,
-        framework=Framework.MLX,
-        entrypoint=[
-            constants.MPI_ENTRYPOINT,
-            "--hostfile",
-            constants.MPI_HOSTFILE,
-            "bash",
-            "-c",
-        ],
-    ),
-    "ghcr.io/kubeflow/trainer/deepspeed-runtime": Trainer(
+    TrainerFramework.DEEPSPEED: Trainer(
         trainer_type=TrainerType.CUSTOM_TRAINER,
         framework=Framework.DEEPSPEED,
         entrypoint=[
@@ -262,20 +257,39 @@ ALL_TRAINERS: Dict[str, Trainer] = {
             "-c",
         ],
     ),
-    # Builtin Trainers.
-    "ghcr.io/kubeflow/trainer/torchtune-trainer": Trainer(
+    TrainerFramework.MLX: Trainer(
+        trainer_type=TrainerType.CUSTOM_TRAINER,
+        framework=Framework.MLX,
+        entrypoint=[
+            constants.MPI_ENTRYPOINT,
+            "--hostfile",
+            constants.MPI_HOSTFILE,
+            "bash",
+            "-c",
+        ],
+    ),
+    TrainerFramework.TORCHTUNE: Trainer(
         trainer_type=TrainerType.BUILTIN_TRAINER,
         framework=Framework.TORCHTUNE,
         entrypoint=constants.DEFAULT_TORCHTUNE_COMMAND,
     ),
 }
 
+
+# The dict where key is the container image and value its representation.
+# Each Trainer representation defines trainer parameters (e.g. type, framework, entrypoint).
+# TODO (andreyvelich): We should allow user to overrides the default image names.
+ALL_TRAINERS: Dict[str, Trainer] = {
+    # Custom Trainers.
+    "pytorch/pytorch": TRAINER_CONFIGS[TrainerFramework.TORCH],
+    "ghcr.io/kubeflow/trainer/mlx-runtime": TRAINER_CONFIGS[TrainerFramework.MLX],
+    "ghcr.io/kubeflow/trainer/deepspeed-runtime": TRAINER_CONFIGS[TrainerFramework.DEEPSPEED],
+    # Builtin Trainers.
+    "ghcr.io/kubeflow/trainer/torchtune-trainer": TRAINER_CONFIGS[TrainerFramework.TORCHTUNE],
+}
+
 # The default trainer configuration when runtime detection fails
-DEFAULT_TRAINER = Trainer(
-    trainer_type=TrainerType.CUSTOM_TRAINER,
-    framework=Framework.TORCH,
-    entrypoint=[constants.TORCH_ENTRYPOINT],
-)
+DEFAULT_TRAINER = TRAINER_CONFIGS[TrainerFramework.TORCH]
 
 # The default runtime configuration for the train() API
 DEFAULT_RUNTIME = Runtime(
