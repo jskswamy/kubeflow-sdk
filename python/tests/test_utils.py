@@ -72,11 +72,11 @@ class TestTrainerDetection:
                 "quay.io/myorg/torchtune/finetuning:latest",
                 types.Framework.TORCHTUNE,
             ),
-            # Edge cases - no match (should fall back to default)
-            ("unknown-image:latest", types.Framework.TORCH),
-            ("", types.Framework.TORCH),
-            ("nginx:latest", types.Framework.TORCH),
-            ("ubuntu:20.04", types.Framework.TORCH),
+            # Edge cases - no match
+            ("unknown-image:latest", None),
+            ("", None),
+            ("nginx:latest", None),
+            ("ubuntu:20.04", None),
         ],
     )
     def test_trainer_detection_from_image_patterns(
@@ -84,13 +84,11 @@ class TestTrainerDetection:
     ):
         """Test trainer detection using image pattern matching with various case scenarios."""
         trainer = utils._detect_trainer_from_image_patterns(image_name)
-        if expected_framework == types.Framework.TORCH and trainer is None:
-            # For unknown images, the _detect_trainer function should return default
-            # but _detect_trainer_from_image_patterns returns None
+
+        if expected_framework is None:
             assert trainer is None
         else:
-            assert trainer is not None
-            assert trainer.framework.value == expected_framework.value
+            assert trainer.framework == expected_framework
 
     @pytest.mark.parametrize(
         "image_name,expected_framework",
@@ -128,7 +126,7 @@ class TestTrainerDetection:
 
         trainer = utils._detect_trainer(trainer_container)
         assert trainer is not None
-        assert trainer.framework.value == expected_framework.value
+        assert trainer.framework == expected_framework
 
     def test_centralized_trainer_configs(self):
         """Test that centralized trainer configurations are properly defined."""
@@ -136,7 +134,7 @@ class TestTrainerDetection:
         for framework in types.Framework:
             assert framework in types.TRAINER_CONFIGS
             trainer = types.TRAINER_CONFIGS[framework]
-            assert trainer.framework.value == framework.value
+            assert trainer.framework == framework
 
     def test_all_trainers_uses_centralized_configs(self):
         """Test that ALL_TRAINERS uses centralized configurations."""
@@ -151,16 +149,12 @@ class TestTrainerDetection:
             assert found_config is not None, (
                 f"Trainer for {image_name} not found in centralized configs"
             )
-            assert trainer.framework.value == found_config.value
+            assert trainer.framework == found_config
 
     def test_default_trainer_uses_centralized_config(self):
         """Test that DEFAULT_TRAINER uses centralized configuration."""
-        assert (
-            types.DEFAULT_TRAINER == types.TRAINER_CONFIGS[types.Framework.TORCH]
-        )
-        assert (
-            types.DEFAULT_TRAINER.framework.value == types.Framework.TORCH.value
-        )
+        assert types.DEFAULT_TRAINER == types.TRAINER_CONFIGS[types.Framework.TORCH]
+        assert types.DEFAULT_TRAINER.framework == types.Framework.TORCH
 
 
 class TestAcceleratorCountLogic:
