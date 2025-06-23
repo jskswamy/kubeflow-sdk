@@ -21,15 +21,6 @@ from typing import Callable, Dict, List, Optional, Union
 from kubeflow.trainer.constants import constants
 
 
-# Trainer framework constants for easy reference
-class TrainerFramework(Enum):
-    """Trainer framework constants."""
-    TORCH = "torch"
-    DEEPSPEED = "deepspeed"
-    MLX = "mlx"
-    TORCHTUNE = "torchtune"
-
-
 # Configuration for the Custom Trainer.
 @dataclass
 class CustomTrainer:
@@ -240,13 +231,13 @@ class Initializer:
 
 
 # Centralized trainer configurations to eliminate duplication
-TRAINER_CONFIGS: Dict[TrainerFramework, Trainer] = {
-    TrainerFramework.TORCH: Trainer(
+TRAINER_CONFIGS: Dict[Framework, Trainer] = {
+    Framework.TORCH: Trainer(
         trainer_type=TrainerType.CUSTOM_TRAINER,
         framework=Framework.TORCH,
         entrypoint=[constants.TORCH_ENTRYPOINT],
     ),
-    TrainerFramework.DEEPSPEED: Trainer(
+    Framework.DEEPSPEED: Trainer(
         trainer_type=TrainerType.CUSTOM_TRAINER,
         framework=Framework.DEEPSPEED,
         entrypoint=[
@@ -257,7 +248,7 @@ TRAINER_CONFIGS: Dict[TrainerFramework, Trainer] = {
             "-c",
         ],
     ),
-    TrainerFramework.MLX: Trainer(
+    Framework.MLX: Trainer(
         trainer_type=TrainerType.CUSTOM_TRAINER,
         framework=Framework.MLX,
         entrypoint=[
@@ -268,7 +259,7 @@ TRAINER_CONFIGS: Dict[TrainerFramework, Trainer] = {
             "-c",
         ],
     ),
-    TrainerFramework.TORCHTUNE: Trainer(
+    Framework.TORCHTUNE: Trainer(
         trainer_type=TrainerType.BUILTIN_TRAINER,
         framework=Framework.TORCHTUNE,
         entrypoint=constants.DEFAULT_TORCHTUNE_COMMAND,
@@ -281,15 +272,15 @@ TRAINER_CONFIGS: Dict[TrainerFramework, Trainer] = {
 # TODO (andreyvelich): We should allow user to overrides the default image names.
 ALL_TRAINERS: Dict[str, Trainer] = {
     # Custom Trainers.
-    "pytorch/pytorch": TRAINER_CONFIGS[TrainerFramework.TORCH],
-    "ghcr.io/kubeflow/trainer/mlx-runtime": TRAINER_CONFIGS[TrainerFramework.MLX],
-    "ghcr.io/kubeflow/trainer/deepspeed-runtime": TRAINER_CONFIGS[TrainerFramework.DEEPSPEED],
+    "pytorch/pytorch": TRAINER_CONFIGS[Framework.TORCH],
+    "ghcr.io/kubeflow/trainer/mlx-runtime": TRAINER_CONFIGS[Framework.MLX],
+    "ghcr.io/kubeflow/trainer/deepspeed-runtime": TRAINER_CONFIGS[Framework.DEEPSPEED],
     # Builtin Trainers.
-    "ghcr.io/kubeflow/trainer/torchtune-trainer": TRAINER_CONFIGS[TrainerFramework.TORCHTUNE],
+    "ghcr.io/kubeflow/trainer/torchtune-trainer": TRAINER_CONFIGS[Framework.TORCHTUNE],
 }
 
 # The default trainer configuration when runtime detection fails
-DEFAULT_TRAINER = TRAINER_CONFIGS[TrainerFramework.TORCH]
+DEFAULT_TRAINER = TRAINER_CONFIGS[Framework.TORCH]
 
 # The default runtime configuration for the train() API
 DEFAULT_RUNTIME = Runtime(

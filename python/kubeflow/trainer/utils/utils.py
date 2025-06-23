@@ -123,23 +123,23 @@ def _detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Train
     """
     # DeepSpeed patterns
     if re.search(r"deepspeed", image_name, re.IGNORECASE):
-        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.DEEPSPEED])
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.DEEPSPEED])
 
     # MLX patterns
     if re.search(r"mlx", image_name, re.IGNORECASE):
-        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.MLX])
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.MLX])
 
     # TorchTune patterns (check before PyTorch to avoid conflicts)
     if re.search(r"torchtune", image_name, re.IGNORECASE):
-        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.TORCHTUNE])
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.TORCHTUNE])
 
     # PyTorch patterns (more specific to avoid matching torchtune)
     if re.search(r"pytorch", image_name, re.IGNORECASE):
-        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.TORCH])
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.TORCH])
 
     # Generic torch patterns (but not torchtune)
     if re.search(r"^torch(?!tune)", image_name, re.IGNORECASE):
-        return copy.deepcopy(types.TRAINER_CONFIGS[types.TrainerFramework.TORCH])
+        return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.TORCH])
 
     return None
 

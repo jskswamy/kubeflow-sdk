@@ -12,71 +12,71 @@ class TestTrainerDetection:
         "image_name,expected_framework",
         [
             # Known images from ALL_TRAINERS
-            ("pytorch/pytorch", types.TrainerFramework.TORCH),
-            ("ghcr.io/kubeflow/trainer/mlx-runtime", types.TrainerFramework.MLX),
+            ("pytorch/pytorch", types.Framework.TORCH),
+            ("ghcr.io/kubeflow/trainer/mlx-runtime", types.Framework.MLX),
             (
                 "ghcr.io/kubeflow/trainer/deepspeed-runtime",
-                types.TrainerFramework.DEEPSPEED,
+                types.Framework.DEEPSPEED,
             ),
             (
                 "ghcr.io/kubeflow/trainer/torchtune-trainer",
-                types.TrainerFramework.TORCHTUNE,
+                types.Framework.TORCHTUNE,
             ),
             # Custom images with pattern matching - lowercase
-            ("my-org/deepspeed-custom:latest", types.TrainerFramework.DEEPSPEED),
-            ("custom-mlx-runtime:v1.0", types.TrainerFramework.MLX),
-            ("pytorch-training:latest", types.TrainerFramework.TORCH),
-            ("torchtune-finetuning:latest", types.TrainerFramework.TORCHTUNE),
+            ("my-org/deepspeed-custom:latest", types.Framework.DEEPSPEED),
+            ("custom-mlx-runtime:v1.0", types.Framework.MLX),
+            ("pytorch-training:latest", types.Framework.TORCH),
+            ("torchtune-finetuning:latest", types.Framework.TORCHTUNE),
             # Custom images with pattern matching - uppercase
-            ("my-org/DeepSpeed-Custom:latest", types.TrainerFramework.DEEPSPEED),
-            ("custom-MLX-runtime:v1.0", types.TrainerFramework.MLX),
-            ("PyTorch-training:latest", types.TrainerFramework.TORCH),
-            ("TorchTune-finetuning:latest", types.TrainerFramework.TORCHTUNE),
+            ("my-org/DeepSpeed-Custom:latest", types.Framework.DEEPSPEED),
+            ("custom-MLX-runtime:v1.0", types.Framework.MLX),
+            ("PyTorch-training:latest", types.Framework.TORCH),
+            ("TorchTune-finetuning:latest", types.Framework.TORCHTUNE),
             # Custom images with pattern matching - mixed case
-            ("my-org/DeepSpeed-custom:latest", types.TrainerFramework.DEEPSPEED),
-            ("custom-Mlx-runtime:v1.0", types.TrainerFramework.MLX),
-            ("PyTorch-Training:latest", types.TrainerFramework.TORCH),
-            ("TorchTune-Finetuning:latest", types.TrainerFramework.TORCHTUNE),
+            ("my-org/DeepSpeed-custom:latest", types.Framework.DEEPSPEED),
+            ("custom-Mlx-runtime:v1.0", types.Framework.MLX),
+            ("PyTorch-Training:latest", types.Framework.TORCH),
+            ("TorchTune-Finetuning:latest", types.Framework.TORCHTUNE),
             # Custom images with pattern matching - all caps
-            ("my-org/DEEPSPEED-CUSTOM:latest", types.TrainerFramework.DEEPSPEED),
-            ("custom-MLX-RUNTIME:v1.0", types.TrainerFramework.MLX),
-            ("PYTORCH-TRAINING:latest", types.TrainerFramework.TORCH),
-            ("TORCHTUNE-FINETUNING:latest", types.TrainerFramework.TORCHTUNE),
+            ("my-org/DEEPSPEED-CUSTOM:latest", types.Framework.DEEPSPEED),
+            ("custom-MLX-RUNTIME:v1.0", types.Framework.MLX),
+            ("PYTORCH-TRAINING:latest", types.Framework.TORCH),
+            ("TORCHTUNE-FINETUNING:latest", types.Framework.TORCHTUNE),
             # Edge cases - partial matches
-            ("my-deepspeed-runtime:latest", types.TrainerFramework.DEEPSPEED),
-            ("mlx-custom:latest", types.TrainerFramework.MLX),
-            ("torch-custom:latest", types.TrainerFramework.TORCH),
-            ("pytorch-custom:latest", types.TrainerFramework.TORCH),
-            ("torchtune-custom:latest", types.TrainerFramework.TORCHTUNE),
+            ("my-deepspeed-runtime:latest", types.Framework.DEEPSPEED),
+            ("mlx-custom:latest", types.Framework.MLX),
+            ("torch-custom:latest", types.Framework.TORCH),
+            ("pytorch-custom:latest", types.Framework.TORCH),
+            ("torchtune-custom:latest", types.Framework.TORCHTUNE),
             # Edge cases - with numbers and special characters
-            ("deepspeed-v2.1:latest", types.TrainerFramework.DEEPSPEED),
-            ("mlx_runtime_1.0:latest", types.TrainerFramework.MLX),
-            ("pytorch_2.0_cuda:latest", types.TrainerFramework.TORCH),
-            ("torchtune-llama-3b:latest", types.TrainerFramework.TORCHTUNE),
+            ("deepspeed-v2.1:latest", types.Framework.DEEPSPEED),
+            ("mlx_runtime_1.0:latest", types.Framework.MLX),
+            ("pytorch_2.0_cuda:latest", types.Framework.TORCH),
+            ("torchtune-llama-3b:latest", types.Framework.TORCHTUNE),
             # Edge cases - with registry prefixes
-            ("docker.io/myorg/deepspeed:latest", types.TrainerFramework.DEEPSPEED),
-            ("ghcr.io/myorg/mlx-runtime:latest", types.TrainerFramework.MLX),
-            ("quay.io/myorg/pytorch-training:latest", types.TrainerFramework.TORCH),
+            ("docker.io/myorg/deepspeed:latest", types.Framework.DEEPSPEED),
+            ("ghcr.io/myorg/mlx-runtime:latest", types.Framework.MLX),
+            ("quay.io/myorg/pytorch-training:latest", types.Framework.TORCH),
             (
                 "registry.example.com/myorg/torchtune:latest",
-                types.TrainerFramework.TORCHTUNE,
+                types.Framework.TORCHTUNE,
             ),
             # Edge cases - with ports and complex paths
             (
                 "registry.example.com:5000/myorg/deepspeed:latest",
-                types.TrainerFramework.DEEPSPEED,
+                types.Framework.DEEPSPEED,
             ),
-            ("ghcr.io/myorg/mlx/runtime:v1.0", types.TrainerFramework.MLX),
-            ("docker.io/myorg/pytorch/training:latest", types.TrainerFramework.TORCH),
+            ("ghcr.io/myorg/mlx/runtime:v1.0", types.Framework.MLX),
+            ("docker.io/myorg/pytorch/training:latest", types.Framework.TORCH),
             (
                 "quay.io/myorg/torchtune/finetuning:latest",
-                types.TrainerFramework.TORCHTUNE,
+                types.Framework.TORCHTUNE,
             ),
             # Edge cases - no match (should fall back to default)
-            ("unknown-image:latest", types.TrainerFramework.TORCH),
-            ("", types.TrainerFramework.TORCH),
-            ("nginx:latest", types.TrainerFramework.TORCH),
-            ("ubuntu:20.04", types.TrainerFramework.TORCH),
+            ("unknown-image:latest", types.Framework.TORCH),
+            ("", types.Framework.TORCH),
+            ("nginx:latest", types.Framework.TORCH),
+            ("ubuntu:20.04", types.Framework.TORCH),
         ],
     )
     def test_trainer_detection_from_image_patterns(
@@ -84,7 +84,7 @@ class TestTrainerDetection:
     ):
         """Test trainer detection using image pattern matching with various case scenarios."""
         trainer = utils._detect_trainer_from_image_patterns(image_name)
-        if expected_framework == types.TrainerFramework.TORCH and trainer is None:
+        if expected_framework == types.Framework.TORCH and trainer is None:
             # For unknown images, the _detect_trainer function should return default
             # but _detect_trainer_from_image_patterns returns None
             assert trainer is None
@@ -96,28 +96,28 @@ class TestTrainerDetection:
         "image_name,expected_framework",
         [
             # Known images (should use ALL_TRAINERS mapping)
-            ("pytorch/pytorch", types.TrainerFramework.TORCH),
-            ("ghcr.io/kubeflow/trainer/mlx-runtime", types.TrainerFramework.MLX),
+            ("pytorch/pytorch", types.Framework.TORCH),
+            ("ghcr.io/kubeflow/trainer/mlx-runtime", types.Framework.MLX),
             (
                 "ghcr.io/kubeflow/trainer/deepspeed-runtime",
-                types.TrainerFramework.DEEPSPEED,
+                types.Framework.DEEPSPEED,
             ),
             (
                 "ghcr.io/kubeflow/trainer/torchtune-trainer",
-                types.TrainerFramework.TORCHTUNE,
+                types.Framework.TORCHTUNE,
             ),
             # Custom images with pattern matching - various cases
-            ("my-deepspeed-runtime:latest", types.TrainerFramework.DEEPSPEED),
-            ("custom-pytorch:latest", types.TrainerFramework.TORCH),
-            ("mlx-custom:latest", types.TrainerFramework.MLX),
-            ("torchtune-custom:latest", types.TrainerFramework.TORCHTUNE),
-            ("DeepSpeed-Custom:latest", types.TrainerFramework.DEEPSPEED),
-            ("PyTorch-Custom:latest", types.TrainerFramework.TORCH),
-            ("MLX-Custom:latest", types.TrainerFramework.MLX),
-            ("TorchTune-Custom:latest", types.TrainerFramework.TORCHTUNE),
+            ("my-deepspeed-runtime:latest", types.Framework.DEEPSPEED),
+            ("custom-pytorch:latest", types.Framework.TORCH),
+            ("mlx-custom:latest", types.Framework.MLX),
+            ("torchtune-custom:latest", types.Framework.TORCHTUNE),
+            ("DeepSpeed-Custom:latest", types.Framework.DEEPSPEED),
+            ("PyTorch-Custom:latest", types.Framework.TORCH),
+            ("MLX-Custom:latest", types.Framework.MLX),
+            ("TorchTune-Custom:latest", types.Framework.TORCHTUNE),
             # Fallback to default
-            ("completely-unknown:latest", types.TrainerFramework.TORCH),
-            ("nginx:latest", types.TrainerFramework.TORCH),
+            ("completely-unknown:latest", types.Framework.TORCH),
+            ("nginx:latest", types.Framework.TORCH),
         ],
     )
     def test_trainer_detection_precedence(self, image_name, expected_framework):
@@ -133,7 +133,7 @@ class TestTrainerDetection:
     def test_centralized_trainer_configs(self):
         """Test that centralized trainer configurations are properly defined."""
         # Verify all trainer frameworks have configurations
-        for framework in types.TrainerFramework:
+        for framework in types.Framework:
             assert framework in types.TRAINER_CONFIGS
             trainer = types.TRAINER_CONFIGS[framework]
             assert trainer.framework.value == framework.value
@@ -143,7 +143,7 @@ class TestTrainerDetection:
         for image_name, trainer in types.ALL_TRAINERS.items():
             # Find the corresponding centralized config
             found_config = None
-            for framework in types.TrainerFramework:
+            for framework in types.Framework:
                 if types.TRAINER_CONFIGS[framework] == trainer:
                     found_config = framework
                     break
@@ -156,10 +156,10 @@ class TestTrainerDetection:
     def test_default_trainer_uses_centralized_config(self):
         """Test that DEFAULT_TRAINER uses centralized configuration."""
         assert (
-            types.DEFAULT_TRAINER == types.TRAINER_CONFIGS[types.TrainerFramework.TORCH]
+            types.DEFAULT_TRAINER == types.TRAINER_CONFIGS[types.Framework.TORCH]
         )
         assert (
-            types.DEFAULT_TRAINER.framework.value == types.TrainerFramework.TORCH.value
+            types.DEFAULT_TRAINER.framework.value == types.Framework.TORCH.value
         )
 
 
