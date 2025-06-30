@@ -97,7 +97,7 @@ class TestTrainerDetection:
     @pytest.mark.parametrize(
         "image_name,expected_framework",
         [
-            # Known images (should use ALL_TRAINERS mapping)
+            # Official Kubeflow images (should be detected by regex)
             ("pytorch/pytorch", types.Framework.TORCH),
             ("ghcr.io/kubeflow/trainer/mlx-runtime", types.Framework.MLX),
             (
@@ -123,7 +123,7 @@ class TestTrainerDetection:
         ],
     )
     def test_trainer_detection_precedence(self, image_name, expected_framework):
-        """Test the precedence order of trainer detection methods."""
+        """Test the trainer detection logic with pattern matching and fallback."""
         # Create mock trainer container
         trainer_container = Mock()
         trainer_container.image = image_name
@@ -132,7 +132,24 @@ class TestTrainerDetection:
         assert trainer is not None
         assert trainer.framework == expected_framework
 
+    def test_official_kubeflow_images_detected_by_regex(self):
+        """Test that official Kubeflow trainer images are correctly detected by regex patterns."""
+        # Official Kubeflow images that should be detected by regex patterns
+        official_images = [
+            ("pytorch/pytorch", types.Framework.TORCH),
+            ("ghcr.io/kubeflow/trainer/mlx-runtime", types.Framework.MLX),
+            ("ghcr.io/kubeflow/trainer/deepspeed-runtime", types.Framework.DEEPSPEED),
+            ("ghcr.io/kubeflow/trainer/torchtune-trainer", types.Framework.TORCHTUNE),
+        ]
 
+        for image_name, expected_framework in official_images:
+            trainer = utils.detect_trainer_from_image_patterns(image_name)
+            assert trainer is not None, (
+                f"Failed to detect trainer for official Kubeflow image: {image_name}"
+            )
+            assert trainer.framework == expected_framework, (
+                f"Wrong framework detected for {image_name}: got {trainer.framework}, expected {expected_framework}"
+            )
 
 
 class TestAcceleratorCountLogic:

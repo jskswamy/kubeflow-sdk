@@ -15,4 +15,4 @@ class TestTrainerConfigurations:
     def test_default_trainer_uses_centralized_config(self):
         """Test that DEFAULT_TRAINER uses centralized configuration."""
         assert types.DEFAULT_TRAINER == types.TRAINER_CONFIGS[types.Framework.TORCH]
-        assert types.DEFAULT_TRAINER.framework == types.Framework.TORCH 
+        assert types.DEFAULT_TRAINER.framework == types.Framework.TORCH

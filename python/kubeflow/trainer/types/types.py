@@ -266,19 +266,6 @@ TRAINER_CONFIGS: Dict[Framework, Trainer] = {
     ),
 }
 
-
-# The dict where key is the container image and value its representation.
-# Each Trainer representation defines trainer parameters (e.g. type, framework, entrypoint).
-# TODO (andreyvelich): We should allow user to overrides the default image names.
-ALL_TRAINERS: Dict[str, Trainer] = {
-    # Custom Trainers.
-    "pytorch/pytorch": TRAINER_CONFIGS[Framework.TORCH],
-    "ghcr.io/kubeflow/trainer/mlx-runtime": TRAINER_CONFIGS[Framework.MLX],
-    "ghcr.io/kubeflow/trainer/deepspeed-runtime": TRAINER_CONFIGS[Framework.DEEPSPEED],
-    # Builtin Trainers.
-    "ghcr.io/kubeflow/trainer/torchtune-trainer": TRAINER_CONFIGS[Framework.TORCHTUNE],
-}
-
 # The default trainer configuration when runtime detection fails
 DEFAULT_TRAINER = TRAINER_CONFIGS[Framework.TORCH]
 

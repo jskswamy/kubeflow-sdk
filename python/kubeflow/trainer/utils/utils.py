@@ -144,12 +144,11 @@ def detect_trainer(
     trainer_container: models.IoK8sApiCoreV1Container,
 ) -> types.Trainer:
     """
-    Detect trainer type with precedence logic.
+    Detect trainer type using pattern matching with fallback.
 
-    This method implements the precedence order:
-    1. Check existing ALL_TRAINERS mapping (backward compatibility)
-    2. Use image pattern matching
-    3. Fall back to DEFAULT_TRAINER
+    This method implements the detection logic:
+    1. Use image pattern matching to detect framework
+    2. Fall back to DEFAULT_TRAINER if no patterns match
 
     Args:
         trainer_container: The trainer container object
@@ -159,16 +158,12 @@ def detect_trainer(
     """
     image_name = trainer_container.image.split(":")[0]
 
-    # 1. Check existing ALL_TRAINERS mapping (backward compatibility)
-    if image_name in types.ALL_TRAINERS:
-        return copy.deepcopy(types.ALL_TRAINERS[image_name])
-
-    # 2. Use image pattern matching
+    # 1. Use image pattern matching
     trainer = detect_trainer_from_image_patterns(image_name)
     if trainer:
         return trainer
 
-    # 3. Fall back to DEFAULT_TRAINER
+    # 2. Fall back to DEFAULT_TRAINER
     return copy.deepcopy(types.DEFAULT_TRAINER)
 
 
