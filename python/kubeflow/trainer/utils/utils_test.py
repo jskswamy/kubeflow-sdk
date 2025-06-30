@@ -45,7 +45,7 @@ class TestTrainerDetection:
             # Edge cases - partial matches
             ("my-deepspeed-runtime:latest", types.Framework.DEEPSPEED),
             ("mlx-custom:latest", types.Framework.MLX),
-            ("torch-custom:latest", types.Framework.TORCH),
+            ("pytorch-torch-custom:latest", types.Framework.TORCH),
             ("pytorch-custom:latest", types.Framework.TORCH),
             ("torchtune-custom:latest", types.Framework.TORCHTUNE),
             # Edge cases - with numbers and special characters
@@ -72,7 +72,11 @@ class TestTrainerDetection:
                 "quay.io/myorg/torchtune/finetuning:latest",
                 types.Framework.TORCHTUNE,
             ),
-            # Edge cases - no match
+            # Edge cases - no match (including generic torch without pytorch)
+            (
+                "torch-custom:latest",
+                None,
+            ),  # Generic torch should not match (requires pytorch)
             ("unknown-image:latest", None),
             ("", None),
             ("nginx:latest", None),

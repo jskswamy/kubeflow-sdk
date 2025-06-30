@@ -133,12 +133,8 @@ def detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Traine
     if re.search(r"torchtune", image_name, re.IGNORECASE):
         return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.TORCHTUNE])
 
-    # PyTorch patterns (more specific to avoid matching torchtune)
+    # PyTorch patterns - require explicit "pytorch" in image name for clarity
     if re.search(r"pytorch", image_name, re.IGNORECASE):
-        return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.TORCH])
-
-    # Generic torch patterns (but not torchtune)
-    if re.search(r"^torch(?!tune)", image_name, re.IGNORECASE):
         return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.TORCH])
 
     return None
