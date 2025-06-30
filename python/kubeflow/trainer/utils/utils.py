@@ -108,7 +108,7 @@ def get_runtime_trainer_container(
     return None
 
 
-def _detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Trainer]:
+def detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Trainer]:
     """
     Detect trainer type based on image name patterns using regex.
 
@@ -144,7 +144,7 @@ def _detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Train
     return None
 
 
-def _detect_trainer(
+def detect_trainer(
     trainer_container: models.IoK8sApiCoreV1Container,
 ) -> types.Trainer:
     """
@@ -168,7 +168,7 @@ def _detect_trainer(
         return copy.deepcopy(types.ALL_TRAINERS[image_name])
 
     # 2. Use image pattern matching
-    trainer = _detect_trainer_from_image_patterns(image_name)
+    trainer = detect_trainer_from_image_patterns(image_name)
     if trainer:
         return trainer
 
@@ -191,7 +191,7 @@ def get_runtime_trainer(
         raise Exception(f"Runtime doesn't have trainer container {replicated_jobs}")
 
     # Use the new detection logic with fallback
-    trainer = _detect_trainer(trainer_container)
+    trainer = detect_trainer(trainer_container)
 
     # Get the container devices.
     if devices := get_container_devices(trainer_container.resources):

@@ -83,7 +83,7 @@ class TestTrainerDetection:
         self, image_name, expected_framework
     ):
         """Test trainer detection using image pattern matching with various case scenarios."""
-        trainer = utils._detect_trainer_from_image_patterns(image_name)
+        trainer = utils.detect_trainer_from_image_patterns(image_name)
 
         if expected_framework is None:
             assert trainer is None
@@ -124,7 +124,7 @@ class TestTrainerDetection:
         trainer_container = Mock()
         trainer_container.image = image_name
 
-        trainer = utils._detect_trainer(trainer_container)
+        trainer = utils.detect_trainer(trainer_container)
         assert trainer is not None
         assert trainer.framework == expected_framework
 
