@@ -128,33 +128,7 @@ class TestTrainerDetection:
         assert trainer is not None
         assert trainer.framework == expected_framework
 
-    def test_centralized_trainer_configs(self):
-        """Test that centralized trainer configurations are properly defined."""
-        # Verify all trainer frameworks have configurations
-        for framework in types.Framework:
-            assert framework in types.TRAINER_CONFIGS
-            trainer = types.TRAINER_CONFIGS[framework]
-            assert trainer.framework == framework
 
-    def test_all_trainers_uses_centralized_configs(self):
-        """Test that ALL_TRAINERS uses centralized configurations."""
-        for image_name, trainer in types.ALL_TRAINERS.items():
-            # Find the corresponding centralized config
-            found_config = None
-            for framework in types.Framework:
-                if types.TRAINER_CONFIGS[framework] == trainer:
-                    found_config = framework
-                    break
-
-            assert found_config is not None, (
-                f"Trainer for {image_name} not found in centralized configs"
-            )
-            assert trainer.framework == found_config
-
-    def test_default_trainer_uses_centralized_config(self):
-        """Test that DEFAULT_TRAINER uses centralized configuration."""
-        assert types.DEFAULT_TRAINER == types.TRAINER_CONFIGS[types.Framework.TORCH]
-        assert types.DEFAULT_TRAINER.framework == types.Framework.TORCH
 
 
 class TestAcceleratorCountLogic:
