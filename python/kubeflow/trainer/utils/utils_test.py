@@ -151,6 +151,32 @@ class TestTrainerDetection:
                 f"Wrong framework detected for {image_name}: got {trainer.framework}, expected {expected_framework}"
             )
 
+    def test_default_parameter_returns_none_when_no_default_provided(self):
+        """Test that function returns None when no default is provided and no pattern matches."""
+        trainer = utils.detect_trainer_from_image_patterns("unknown-image:latest")
+        assert trainer is None
+
+    def test_default_parameter_returns_deep_copy_of_default(self):
+        """Test that function returns a deep copy of the provided default when no pattern matches."""
+        custom_trainer = types.TRAINER_CONFIGS[types.Framework.MLX]
+        trainer = utils.detect_trainer_from_image_patterns(
+            "unknown-image:latest", custom_trainer
+        )
+        assert trainer is not None
+        assert trainer.framework == types.Framework.MLX
+        # Verify it's a deep copy (different object)
+        assert trainer is not custom_trainer
+
+    def test_pattern_matching_overrides_default_parameter(self):
+        """Test that pattern matching takes precedence over the default parameter."""
+        custom_trainer = types.TRAINER_CONFIGS[types.Framework.MLX]
+        trainer = utils.detect_trainer_from_image_patterns(
+            "deepspeed-custom:latest", custom_trainer
+        )
+        assert trainer is not None
+        assert trainer.framework == types.Framework.DEEPSPEED  # Pattern match wins
+        assert trainer.framework != types.Framework.MLX  # Default is ignored
+
 
 class TestAcceleratorCountLogic:
     """Test cases for accelerator count logic in get_runtime_trainer."""

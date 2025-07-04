@@ -108,7 +108,9 @@ def get_runtime_trainer_container(
     return None
 
 
-def detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Trainer]:
+def detect_trainer_from_image_patterns(
+    image_name: str, default: Optional[types.Trainer] = None
+) -> Optional[types.Trainer]:
     """
     Detect trainer type based on image name patterns using regex.
 
@@ -117,9 +119,10 @@ def detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Traine
 
     Args:
         image_name: The container image name
+        default: Optional default trainer to return if no patterns match
 
     Returns:
-        Trainer object if detected, None otherwise
+        Trainer object if detected, default if provided, None otherwise
     """
     # DeepSpeed patterns
     if re.search(r"deepspeed", image_name, re.IGNORECASE):
@@ -137,6 +140,9 @@ def detect_trainer_from_image_patterns(image_name: str) -> Optional[types.Traine
     if re.search(r"pytorch", image_name, re.IGNORECASE):
         return copy.deepcopy(types.TRAINER_CONFIGS[types.Framework.TORCH])
 
+    # Handle deep copy internally
+    if default is not None:
+        return copy.deepcopy(default)
     return None
 
 
@@ -158,13 +164,8 @@ def detect_trainer(
     """
     image_name = trainer_container.image.split(":")[0]
 
-    # 1. Use image pattern matching
-    trainer = detect_trainer_from_image_patterns(image_name)
-    if trainer:
-        return trainer
-
-    # 2. Fall back to DEFAULT_TRAINER
-    return copy.deepcopy(types.DEFAULT_TRAINER)
+    # Use image pattern matching with default fallback
+    return detect_trainer_from_image_patterns(image_name, types.DEFAULT_TRAINER)
 
 
 def get_runtime_trainer(
