@@ -87,10 +87,11 @@ class TestTrainerDetection:
         self, image_name, expected_framework
     ):
         """Test trainer detection using image pattern matching with various case scenarios."""
-        trainer = utils.detect_trainer_from_image_patterns(image_name)
+        trainer = utils.get_trainer_from_image(image_name)
 
         if expected_framework is None:
-            assert trainer is None
+            # When no pattern matches, should return DEFAULT_TRAINER (PyTorch)
+            assert trainer.framework == types.Framework.TORCH
         else:
             assert trainer.framework == expected_framework
 
@@ -143,7 +144,7 @@ class TestTrainerDetection:
         ]
 
         for image_name, expected_framework in official_images:
-            trainer = utils.detect_trainer_from_image_patterns(image_name)
+            trainer = utils.get_trainer_from_image(image_name)
             assert trainer is not None, (
                 f"Failed to detect trainer for official Kubeflow image: {image_name}"
             )
@@ -151,31 +152,30 @@ class TestTrainerDetection:
                 f"Wrong framework detected for {image_name}: got {trainer.framework}, expected {expected_framework}"
             )
 
-    def test_default_parameter_returns_none_when_no_default_provided(self):
-        """Test that function returns None when no default is provided and no pattern matches."""
-        trainer = utils.detect_trainer_from_image_patterns("unknown-image:latest")
-        assert trainer is None
-
-    def test_default_parameter_returns_deep_copy_of_default(self):
-        """Test that function returns a deep copy of the provided default when no pattern matches."""
-        custom_trainer = types.TRAINER_CONFIGS[types.Framework.MLX]
-        trainer = utils.detect_trainer_from_image_patterns(
-            "unknown-image:latest", custom_trainer
-        )
+    def test_returns_default_trainer_when_no_pattern_matches(self):
+        """Test that function returns DEFAULT_TRAINER when no pattern matches."""
+        trainer = utils.get_trainer_from_image("unknown-image:latest")
         assert trainer is not None
-        assert trainer.framework == types.Framework.MLX
-        # Verify it's a deep copy (different object)
-        assert trainer is not custom_trainer
+        assert trainer.framework == types.Framework.TORCH  # DEFAULT_TRAINER is PyTorch
 
-    def test_pattern_matching_overrides_default_parameter(self):
-        """Test that pattern matching takes precedence over the default parameter."""
-        custom_trainer = types.TRAINER_CONFIGS[types.Framework.MLX]
-        trainer = utils.detect_trainer_from_image_patterns(
-            "deepspeed-custom:latest", custom_trainer
-        )
+    def test_returns_deep_copy_of_default_trainer(self):
+        """Test that function returns a deep copy of DEFAULT_TRAINER when no pattern matches."""
+        trainer1 = utils.get_trainer_from_image("unknown-image-1:latest")
+        trainer2 = utils.get_trainer_from_image("unknown-image-2:latest")
+
+        assert trainer1 is not None
+        assert trainer2 is not None
+        assert trainer1.framework == types.Framework.TORCH
+        assert trainer2.framework == types.Framework.TORCH
+        # Verify they are different objects (deep copies)
+        assert trainer1 is not trainer2
+
+    def test_pattern_matching_takes_precedence_over_default(self):
+        """Test that pattern matching takes precedence over default fallback."""
+        trainer = utils.get_trainer_from_image("deepspeed-custom:latest")
         assert trainer is not None
         assert trainer.framework == types.Framework.DEEPSPEED  # Pattern match wins
-        assert trainer.framework != types.Framework.MLX  # Default is ignored
+        assert trainer.framework != types.Framework.TORCH  # Not the default
 
 
 class TestAcceleratorCountLogic:
