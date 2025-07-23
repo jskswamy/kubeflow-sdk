@@ -203,6 +203,12 @@ class TestAcceleratorCountLogic:
             ({"mpi": {"num_proc_per_node": 2}}, 2),
             ({"mpi": {"num_proc_per_node": 16}}, 16),
             ({"mpi": {"num_proc_per_node": 1}}, 1),
+            # Zero values should be treated as None (ignored)
+            ({"torch": {"num_proc_per_node": 0}}, None),
+            ({"mpi": {"num_proc_per_node": 0}}, None),
+            # Negative values are trusted (user input)
+            ({"torch": {"num_proc_per_node": -1}}, -1),
+            ({"mpi": {"num_proc_per_node": -1}}, -1),
             # No policies
             ({}, None),
             ({"torch": {}}, None),

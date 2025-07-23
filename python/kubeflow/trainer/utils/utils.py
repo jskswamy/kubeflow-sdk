@@ -179,15 +179,14 @@ def get_runtime_trainer(
         _, trainer.accelerator_count = devices
 
     # Torch and MPI plugins override accelerator count.
-    # NOTE: The 'is not None' checks are essential because:
-    # 1. For torch: prevents AttributeError when accessing None.actual_instance
-    # 2. For MPI: prevents setting accelerator_count to None
-    # 3. Semantically: only override when user explicitly provides num_proc_per_node
-    if ml_policy.torch and ml_policy.torch.num_proc_per_node is not None:
+    # NOTE: Using truthiness check handles None/0 automatically
+    if (ml_policy.torch and 
+        ml_policy.torch.num_proc_per_node and
+        ml_policy.torch.num_proc_per_node.actual_instance):
         num_proc = ml_policy.torch.num_proc_per_node.actual_instance
         if isinstance(num_proc, int):
             trainer.accelerator_count = num_proc
-    elif ml_policy.mpi and ml_policy.mpi.num_proc_per_node is not None:
+    elif (ml_policy.mpi and ml_policy.mpi.num_proc_per_node):
         trainer.accelerator_count = ml_policy.mpi.num_proc_per_node
 
     # Multiply accelerator_count by the number of nodes.
