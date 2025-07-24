@@ -25,10 +25,12 @@ from kubeflow.trainer.constants import constants
 @dataclass
 class CustomTrainer:
     """Custom Trainer configuration. Configure the self-contained function
-        that encapsulates the entire model training process.
+        that encapsulates the entire model training process, or run a Python script directly.
 
     Args:
         func (`Callable`): The function that encapsulates the entire model training process.
+        python_file (`Optional[str]`): Path to a Python script to run directly (e.g., 'train.py').
+        Only one of func or python_file should be set.
         func_args (`Optional[Dict]`): The arguments to pass to the function.
         packages_to_install (`Optional[List[str]]`):
             A list of Python packages to install before running the function.
@@ -37,7 +39,8 @@ class CustomTrainer:
         resources_per_node (`Optional[Dict]`): The computing resources to allocate per node.
     """
 
-    func: Callable
+    func: Optional[Callable] = None
+    python_file: Optional[str] = None
     func_args: Optional[Dict] = None
     packages_to_install: Optional[List[str]] = None
     pip_index_url: str = constants.DEFAULT_PIP_INDEX_URL

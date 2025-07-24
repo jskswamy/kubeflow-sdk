@@ -403,9 +403,17 @@ def get_trainer_crd_from_custom_trainer(
 
     # Add resources per node to the Trainer.
     if trainer.resources_per_node:
-        trainer_crd.resources_per_node = get_resources_per_node(
-            trainer.resources_per_node
-        )
+        trainer_crd.resources_per_node = get_resources_per_node(trainer.resources_per_node)
+
+    if trainer.python_file:
+        if trainer.func:
+            raise ValueError("Specify only one of func or python_file in CustomTrainer.")
+        trainer_crd.command = ["python"]
+        trainer_crd.args = [trainer.python_file]
+        return trainer_crd
+
+    if not trainer.func:
+        raise ValueError("You must specify either func or python_file in CustomTrainer.")
 
     # Add command and args to the Trainer.
     trainer_crd.command = constants.DEFAULT_CUSTOM_COMMAND
@@ -417,7 +425,6 @@ def get_trainer_crd_from_custom_trainer(
         trainer.pip_index_url,
         trainer.packages_to_install,
     )
-
     return trainer_crd
 
 
