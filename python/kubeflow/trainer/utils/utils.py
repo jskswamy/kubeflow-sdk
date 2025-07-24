@@ -372,6 +372,20 @@ def get_trainer_crd_from_custom_trainer(
             trainer.resources_per_node
         )
 
+    if trainer.python_file:
+        if trainer.func:
+            raise ValueError("Specify only one of func or python_file in CustomTrainer.")
+        trainer_crd.command = ["python"]
+           # Combine python_file with python_args
+        args = [trainer.python_file]
+        if trainer.python_args:
+            args.extend(trainer.python_args)
+        trainer_crd.args = args
+        return trainer_crd
+
+    if not trainer.func:
+        raise ValueError("You must specify either func or python_file in CustomTrainer.")
+
     # Add command to the Trainer.
     # TODO: Support train function parameters.
     trainer_crd.command = get_command_using_train_func(

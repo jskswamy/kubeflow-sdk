@@ -16,7 +16,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 from kubeflow.trainer.constants import constants
 
@@ -25,10 +25,13 @@ from kubeflow.trainer.constants import constants
 @dataclass
 class CustomTrainer:
     """Custom Trainer configuration. Configure the self-contained function
-        that encapsulates the entire model training process.
+        that encapsulates the entire model training process, or run a Python script directly.
 
     Args:
         func (`Callable`): The function that encapsulates the entire model training process.
+        python_file (`Optional[str]`): Path to a Python script to run directly (e.g., 'train.py').
+        python_args (`Optional[List[str]]`): Arguments to pass to the Python script.
+        Only one of func or python_file should be set.
         func_args (`Optional[Dict]`): The arguments to pass to the function.
         packages_to_install (`Optional[List[str]]`):
             A list of Python packages to install before running the function.
@@ -38,7 +41,9 @@ class CustomTrainer:
         env (`Optional[Dict[str, str]]`): The environment variables to set in the training nodes.
     """
 
-    func: Callable
+    func: Optional[Callable] = None
+    python_file: Optional[str] = None
+    python_args: Optional[List[str]] = None
     func_args: Optional[Dict] = None
     packages_to_install: Optional[list[str]] = None
     pip_index_url: str = constants.DEFAULT_PIP_INDEX_URL
