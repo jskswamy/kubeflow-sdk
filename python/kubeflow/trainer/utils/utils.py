@@ -375,8 +375,11 @@ def get_trainer_crd_from_custom_trainer(
     if trainer.python_file:
         if trainer.func:
             raise ValueError("Specify only one of func or python_file in CustomTrainer.")
-        trainer_crd.command = ["python"]
-           # Combine python_file with python_args
+
+        # Use the runtime's framework-specific command but with the python_file
+        trainer_crd.command = list(runtime.trainer.command)
+
+        # Combine python_file with python_args
         args = [trainer.python_file]
         if trainer.python_args:
             args.extend(trainer.python_args)
