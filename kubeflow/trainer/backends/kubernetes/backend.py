@@ -182,7 +182,7 @@ class KubernetesBackend(ExecutionBackend):
         self,
         runtime: Optional[types.Runtime] = None,
         initializer: Optional[types.Initializer] = None,
-        trainer: Optional[Union[types.CustomTrainer, types.BuiltinTrainer]] = None,
+        trainer: Optional[Union[types.CustomTrainer, types.CommandTrainer, types.BuiltinTrainer]] = None,
     ) -> str:
         if runtime is None:
             runtime = self.get_runtime(constants.TORCH_RUNTIME)
