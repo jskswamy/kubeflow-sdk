@@ -16,7 +16,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Optional
+from typing import Callable, Optional, List, Dict
 
 from kubeflow.trainer.constants import constants
 
@@ -240,3 +240,27 @@ class Initializer:
 
     dataset: Optional[HuggingFaceDatasetInitializer] = None
     model: Optional[HuggingFaceModelInitializer] = None
+
+
+@dataclass
+class CommandTrainer:
+    """Command Trainer configuration. Execute an arbitrary command with arguments
+        inside the runtime’s launcher template, preserving installs and env.
+
+    Args:
+        command (List[str]): The command to execute (e.g., ["python"]).
+        args (Optional[List[str]]): Positional arguments for the command.
+        packages_to_install (Optional[List[str]]): Python packages to install.
+        pip_index_urls (List[str]): Index and extra index URLs; first is index-url.
+        num_nodes (Optional[int]): Number of nodes for training.
+        resources_per_node (Optional[Dict]): Resources per node.
+        env (Optional[Dict[str, str]]): Environment variables.
+    """
+
+    command: List[str]
+    args: Optional[List[str]] = None
+    packages_to_install: Optional[List[str]] = None
+    pip_index_urls: List[str] = field(default_factory=lambda: list(constants.DEFAULT_PIP_INDEX_URLS))
+    num_nodes: Optional[int] = None
+    resources_per_node: Optional[Dict] = None
+    env: Optional[Dict[str, str]] = None
