@@ -71,6 +71,37 @@ TrainerClient().wait_for_job_status(job_id)
 print("\n".join(TrainerClient().get_job_logs(name=job_id)))
 ```
 
+### Run a custom command with CommandTrainer
+
+CommandTrainer runs an arbitrary command inside the runtime’s launcher (torchrun/mpirun/python) while preserving package installation, env vars, and resources.
+
+```python
+from kubeflow.trainer import TrainerClient
+from kubeflow.trainer.types import types
+
+client = TrainerClient()
+rt = client.get_runtime("torch")  # or "mpi", "plainml"
+
+trainer = types.CommandTrainer(
+    command=["python"],
+    args=["train.py", "--epochs", "2"],
+    packages_to_install=["numpy"],
+    pip_index_urls=["https://pypi.org/simple"],
+    num_nodes=2,
+    resources_per_node={"gpu": "1"},
+    env={"FOO": "bar"},
+)
+
+job = client.train(runtime=rt, trainer=trainer)
+print("Job:", job)
+```
+
+Notes:
+
+- Launcher is runtime-aware (torch → torchrun, mpi → mpirun, plain → python).
+- Packages are installed before the command; MPI installs use `--user`.
+- Ensure your script exists in the container (image/ConfigMap/volume/init).
+
 ## Supported Kubeflow Projects
 
 | Project                     | Status           | Version Support | Description                                                |
