@@ -365,6 +365,41 @@ def get_command_using_train_func(
     return command
 
 
+def get_command_using_user_command(
+    runtime: types.Runtime,
+    command: list[str],
+    command_args: Optional[list[str]],
+    pip_index_urls: list[str],
+    packages_to_install: Optional[list[str]],
+) -> list[str]:
+    """
+    Build a runtime-aware command to execute an arbitrary user command with args.
+    Preserves the runtime launcher (torchrun/mpirun/python) and prepends optional
+    pip installs using provided index URLs.
+    """
+    if not runtime.trainer:
+        raise ValueError(f"Runtime must have a trainer: {runtime}")
+
+    base = list(runtime.trainer.command)
+    is_mpi = base and base[0] == "mpirun"
+
+    install = ""
+    if packages_to_install:
+        install = get_script_for_python_packages(
+            packages_to_install=packages_to_install,
+            pip_index_urls=pip_index_urls,
+            is_mpi=is_mpi,
+        )
+
+    cmd_line = " ".join([*(command or []), *(((command_args) or []))])
+    final_script = "{}{}".format(install, cmd_line)
+
+    if not base:
+        return ["bash", "-c", final_script]
+
+    base[-1] = final_script
+    return base
+
 def get_trainer_crd_from_custom_trainer(
     runtime: types.Runtime,
     trainer: types.CustomTrainer,

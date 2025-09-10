@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import textwrap
+
 import pytest
 
 from kubeflow.trainer.constants import constants
@@ -255,3 +257,120 @@ def test_get_command_using_train_func(test_case: TestCase):
     except Exception as e:
         assert type(e) is test_case.expected_error
     print("test execution complete")
+
+def _build_plain_runtime() -> types.Runtime:
+    trainer = types.RuntimeTrainer(
+        trainer_type=types.TrainerType.CUSTOM_TRAINER,
+        framework="plainml",
+        num_nodes=1,
+    )
+    trainer.set_command(constants.DEFAULT_COMMAND)
+    return types.Runtime(name="test-runtime", trainer=trainer)
+
+def _build_mpi_runtime() -> types.Runtime:
+    trainer = types.RuntimeTrainer(
+        trainer_type=types.TrainerType.CUSTOM_TRAINER,
+        framework="mpi",
+        num_nodes=2,
+    )
+    trainer.set_command(constants.MPI_COMMAND)
+    return types.Runtime(name="mpi-runtime", trainer=trainer)
+
+
+class TestGetCommandUsingUserCommand:
+    def test_plain_with_installs(self):
+        runtime = _build_plain_runtime()
+        command = ["python"]
+        command_args = ["train.py", "--epochs", "2"]
+        pip_index_urls = [
+            "https://pypi.org/simple",
+            "https://private.repo.com/simple",
+        ]
+        packages_to_install = ["torch", "numpy"]
+
+        result = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=command,
+            command_args=command_args,
+            pip_index_urls=pip_index_urls,
+            packages_to_install=packages_to_install,
+        )
+
+        expected = textwrap.dedent(
+            """bash
+-c
+
+if ! [ -x "$(command -v pip)" ]; then
+    python -m ensurepip || python -m ensurepip --user || apt-get install python-pip
+fi
+
+PIP_DISABLE_PIP_VERSION_CHECK=1 python -m pip install --quiet --no-warn-script-location --index-url https://pypi.org/simple --extra-index-url https://private.repo.com/simple torch numpy
+python train.py --epochs 2"""
+        )
+        assert "\n".join(result) == expected
+
+    def test_preserves_prefix_plain(self):
+        runtime = _build_plain_runtime()
+
+        result = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=["python"],
+            command_args=["main.py"],
+            pip_index_urls=[constants.DEFAULT_PIP_INDEX_URLS[0]],
+            packages_to_install=None,
+        )
+
+        expected = "bash\n-c\npython main.py"
+        assert "\n".join(result) == expected
+
+    def test_preserves_prefix_mpi_and_user_flag(self):
+        runtime = _build_mpi_runtime()
+
+        result = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=["python"],
+            command_args=["train.py"],
+            pip_index_urls=["https://pypi.org/simple"],
+            packages_to_install=["torch"],
+        )
+
+        expected = textwrap.dedent(
+            """mpirun
+--hostfile
+/etc/mpi/hostfile
+bash
+-c
+
+if ! [ -x "$(command -v pip)" ]; then
+    python -m ensurepip || python -m ensurepip --user || apt-get install python-pip
+fi
+
+PIP_DISABLE_PIP_VERSION_CHECK=1 python -m pip install --quiet --no-warn-script-location --index-url https://pypi.org/simple --user torch
+python train.py"""
+        )
+        assert "\n".join(result) == expected
+
+    def test_fallback_when_no_runtime_command(self):
+        trainer = types.RuntimeTrainer(
+            trainer_type=types.TrainerType.CUSTOM_TRAINER,
+            framework="plainml",
+            num_nodes=1,
+        )
+        # Explicitly set launcher for this runtime
+        trainer.set_command(constants.DEFAULT_COMMAND)
+        runtime = types.Runtime(name="with-launcher", trainer=trainer)
+
+        result = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=["echo"],
+            command_args=["hello"],
+            pip_index_urls=[constants.DEFAULT_PIP_INDEX_URLS[0]],
+            packages_to_install=None,
+        )
+
+        expected = textwrap.dedent(
+            """bash
+-c
+echo hello"""
+        )
+        assert "\n".join(result) == expected
