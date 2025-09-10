@@ -309,6 +309,58 @@ python train.py --epochs 2"""
         )
         assert "\n".join(result) == expected
 
+
+class TestGetTrainerCRDFromCommandTrainer:
+    def test_plain_runtime_builds_crd_with_env_and_resources(self):
+        runtime = _build_plain_runtime()
+        trainer = types.CommandTrainer(
+            command=["python"],
+            args=["main.py", "--epochs", "3"],
+            packages_to_install=["numpy"],
+            pip_index_urls=["https://pypi.org/simple"],
+            num_nodes=2,
+            resources_per_node={"gpu": "1"},
+            env={"FOO": "bar"},
+        )
+
+        crd = utils.get_trainer_crd_from_command_trainer(runtime, trainer)
+
+        expected_command = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=trainer.command,
+            command_args=trainer.args,
+            pip_index_urls=trainer.pip_index_urls,
+            packages_to_install=trainer.packages_to_install,
+        )
+
+        assert crd.num_nodes == 2
+        assert crd.command == expected_command
+        assert any(ev.name == "FOO" and ev.value == "bar" for ev in (crd.env or []))
+        assert crd.resources_per_node is not None
+
+    def test_mpi_runtime_builds_crd_uses_user_flag(self):
+        runtime = _build_mpi_runtime()
+        trainer = types.CommandTrainer(
+            command=["python"],
+            args=["train.py"],
+            packages_to_install=["torch"],
+            pip_index_urls=["https://pypi.org/simple"],
+            num_nodes=4,
+        )
+
+        crd = utils.get_trainer_crd_from_command_trainer(runtime, trainer)
+
+        expected_command = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=trainer.command,
+            command_args=trainer.args,
+            pip_index_urls=trainer.pip_index_urls,
+            packages_to_install=trainer.packages_to_install,
+        )
+
+        assert crd.num_nodes == 4
+        assert crd.command == expected_command
+
     def test_preserves_prefix_plain(self):
         runtime = _build_plain_runtime()
 

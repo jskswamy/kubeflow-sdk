@@ -400,6 +400,38 @@ def get_command_using_user_command(
     base[-1] = final_script
     return base
 
+
+def get_trainer_crd_from_command_trainer(
+    runtime: types.Runtime,
+    trainer: types.CommandTrainer,
+) -> models.TrainerV1alpha1Trainer:
+    """
+    Build Trainer CRD for CommandTrainer, preserving env/resources and using the
+    runtime-aware user command assembly helper.
+    """
+    trainer_crd = models.TrainerV1alpha1Trainer()
+
+    if trainer.num_nodes:
+        trainer_crd.num_nodes = trainer.num_nodes
+
+    if trainer.resources_per_node:
+        trainer_crd.resources_per_node = get_resources_per_node(trainer.resources_per_node)
+
+    trainer_crd.command = get_command_using_user_command(
+        runtime=runtime,
+        command=trainer.command,
+        command_args=trainer.args,
+        pip_index_urls=trainer.pip_index_urls,
+        packages_to_install=trainer.packages_to_install,
+    )
+
+    if trainer.env:
+        trainer_crd.env = [
+            models.IoK8sApiCoreV1EnvVar(name=k, value=v) for k, v in trainer.env.items()
+        ]
+
+    return trainer_crd
+
 def get_trainer_crd_from_custom_trainer(
     runtime: types.Runtime,
     trainer: types.CustomTrainer,
