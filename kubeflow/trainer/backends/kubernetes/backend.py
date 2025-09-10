@@ -201,6 +201,12 @@ class KubernetesBackend(ExecutionBackend):
                     raise ValueError(f"CustomTrainer can't be used with {runtime} runtime")
                 trainer_crd = utils.get_trainer_crd_from_custom_trainer(runtime, trainer)
 
+            # If users choose to use a command trainer to run custom command.
+            elif isinstance(trainer, types.CommandTrainer):
+                if runtime.trainer.trainer_type != types.TrainerType.CUSTOM_TRAINER:
+                    raise ValueError(f"CommandTrainer can't be used with {runtime} runtime")
+                trainer_crd = utils.get_trainer_crd_from_command_trainer(runtime, trainer)
+
             # If users choose to use a builtin trainer for post-training.
             elif isinstance(trainer, types.BuiltinTrainer):
                 if runtime.trainer.trainer_type != types.TrainerType.BUILTIN_TRAINER:
@@ -212,7 +218,7 @@ class KubernetesBackend(ExecutionBackend):
             else:
                 raise ValueError(
                     f"The trainer type {type(trainer)} is not supported. "
-                    "Please use CustomTrainer or BuiltinTrainer."
+                    "Please use CustomTrainer, CommandTrainer or BuiltinTrainer."
                 )
 
         train_job = models.TrainerV1alpha1TrainJob(

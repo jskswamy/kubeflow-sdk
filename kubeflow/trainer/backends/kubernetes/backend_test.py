@@ -19,17 +19,17 @@ This module uses pytest and unittest.mock to simulate Kubernetes API interaction
 It tests KubernetesBackend's behavior across job listing, resource creation etc
 """
 
-from dataclasses import asdict
 import datetime
 import multiprocessing
 import random
 import string
+import uuid
+from dataclasses import asdict
 from typing import Optional
 from unittest.mock import Mock, patch
-import uuid
 
-from kubeflow_trainer_api import models
 import pytest
+from kubeflow_trainer_api import models
 
 from kubeflow.trainer.backends.kubernetes.backend import KubernetesBackend
 from kubeflow.trainer.backends.kubernetes.types import KubernetesBackendConfig
@@ -819,6 +819,23 @@ def test_train(kubernetes_backend, test_case):
     except Exception as e:
         assert type(e) is test_case.expected_error
     print("test execution complete")
+
+
+def test_train_routes_command_trainer(kubernetes_backend):
+    """Ensure CommandTrainer is routed to its CRD builder in backend.train."""
+    runtime = kubernetes_backend.get_runtime(TORCH_RUNTIME)
+    cmd_trainer = types.CommandTrainer(command=["python"], args=["train.py"])
+
+    fake_crd = models.TrainerV1alpha1Trainer()
+
+    with patch(
+        "kubeflow.trainer.utils.utils.get_trainer_crd_from_command_trainer",
+        return_value=fake_crd,
+    ) as mocked_builder:
+        job_name = kubernetes_backend.train(runtime=runtime, trainer=cmd_trainer)
+
+    mocked_builder.assert_called_once()
+    assert isinstance(job_name, str) and len(job_name) > 0
 
 
 @pytest.mark.parametrize(
