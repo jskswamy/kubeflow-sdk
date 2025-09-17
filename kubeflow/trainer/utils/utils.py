@@ -417,13 +417,19 @@ def get_trainer_crd_from_command_trainer(
     if trainer.resources_per_node:
         trainer_crd.resources_per_node = get_resources_per_node(trainer.resources_per_node)
 
-    trainer_crd.command = get_command_using_user_command(
-        runtime=runtime,
-        command=trainer.command,
-        command_args=trainer.args,
-        pip_index_urls=trainer.pip_index_urls,
-        packages_to_install=trainer.packages_to_install,
-    )
+    # If packages need to be installed OR no explicit command is provided, use bash-wrapped path
+    # to preserve install features and runtime launcher behavior. Otherwise, pass-through.
+    if trainer.packages_to_install or not (trainer.command and len(trainer.command) > 0):
+        trainer_crd.command = get_command_using_user_command(
+            runtime=runtime,
+            command=list(trainer.command or []),
+            command_args=trainer.args,
+            pip_index_urls=trainer.pip_index_urls,
+            packages_to_install=trainer.packages_to_install,
+        )
+    else:
+        trainer_crd.command = list(trainer.command)
+        trainer_crd.args = list(trainer.args or [])
 
     if trainer.env:
         trainer_crd.env = [

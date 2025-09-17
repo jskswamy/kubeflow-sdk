@@ -324,7 +324,6 @@ class TestGetTrainerCRDFromCommandTrainer:
         )
 
         crd = utils.get_trainer_crd_from_command_trainer(runtime, trainer)
-
         expected_command = utils.get_command_using_user_command(
             runtime=runtime,
             command=trainer.command,
@@ -360,6 +359,31 @@ class TestGetTrainerCRDFromCommandTrainer:
 
         assert crd.num_nodes == 4
         assert crd.command == expected_command
+
+    def test_defaults_to_bash_when_command_missing(self):
+        runtime = _build_plain_runtime()
+        trainer = types.CommandTrainer(
+            args=["-lc", "echo hello"],
+        )
+        crd = utils.get_trainer_crd_from_command_trainer(runtime, trainer)
+        expected_command = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=[],
+            command_args=["-lc", "echo hello"],
+            pip_index_urls=trainer.pip_index_urls,
+            packages_to_install=trainer.packages_to_install,
+        )
+        assert crd.command == expected_command
+
+    def test_pass_through_when_command_without_installs(self):
+        runtime = _build_plain_runtime()
+        trainer = types.CommandTrainer(
+            command=["python"],
+            args=["main.py"],
+        )
+        crd = utils.get_trainer_crd_from_command_trainer(runtime, trainer)
+        assert crd.command == ["python"]
+        assert crd.args == ["main.py"]
 
     def test_preserves_prefix_plain(self):
         runtime = _build_plain_runtime()

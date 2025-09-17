@@ -244,11 +244,15 @@ class Initializer:
 
 @dataclass
 class CommandTrainer:
-    """Command Trainer configuration. Execute an arbitrary command with arguments
-        inside the runtime’s launcher template, preserving installs and env.
+    """Command Trainer configuration.
+
+    Docker-like semantics:
+    - If "command" is set, it becomes the container entrypoint and "args" are passed as container args.
+    - If "command" is not set, defaults are chosen by runtime framework (e.g., torch→torchrun,
+      mpi→mpirun, torch-tune→tune run, otherwise python), and "args" are passed as-is.
 
     Args:
-        command (List[str]): The command to execute (e.g., ["python"]).
+        command (Optional[List[str]]): The command to execute (e.g., ["python"]).
         args (Optional[List[str]]): Positional arguments for the command.
         packages_to_install (Optional[List[str]]): Python packages to install.
         pip_index_urls (List[str]): Index and extra index URLs; first is index-url.
@@ -257,7 +261,7 @@ class CommandTrainer:
         env (Optional[Dict[str, str]]): Environment variables.
     """
 
-    command: List[str]
+    command: Optional[List[str]] = None
     args: Optional[List[str]] = None
     packages_to_install: Optional[List[str]] = None
     pip_index_urls: List[str] = field(default_factory=lambda: list(constants.DEFAULT_PIP_INDEX_URLS))
