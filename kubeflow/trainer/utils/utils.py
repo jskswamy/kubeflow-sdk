@@ -259,6 +259,7 @@ def get_script_for_python_packages(
     packages_to_install: list[str],
     pip_index_urls: list[str],
     is_mpi: bool,
+    pip_extra_args: Optional[list[str]] = None,
 ) -> str:
     """
     Get init script to install Python packages from the given pip index URLs.
@@ -281,14 +282,16 @@ def get_script_for_python_packages(
         """
     )
 
-    script_for_python_packages = (
-        header_script
-        + "PIP_DISABLE_PIP_VERSION_CHECK=1 python -m pip install --quiet "
-        + "--no-warn-script-location {} {}\n".format(
-            " ".join(options),
-            packages_str,
-        )
+    extra_args = " ".join(pip_extra_args or [])
+    options_args = " ".join(options)
+
+    base_cmd = (
+        f"PIP_DISABLE_PIP_VERSION_CHECK=1 python -m pip install --quiet --no-warn-script-location {options_args} {packages_str}"  # noqa: E501
     )
+    if extra_args:
+        base_cmd = f"{base_cmd} {extra_args}"
+
+    script_for_python_packages = f"{header_script}{base_cmd}\n"
 
     return script_for_python_packages
 
@@ -371,6 +374,7 @@ def get_command_using_user_command(
     command_args: Optional[list[str]],
     pip_index_urls: list[str],
     packages_to_install: Optional[list[str]],
+    pip_extra_args: Optional[list[str]] = None,
 ) -> list[str]:
     """
     Build a runtime-aware command to execute an arbitrary user command with args.
@@ -389,6 +393,7 @@ def get_command_using_user_command(
             packages_to_install=packages_to_install,
             pip_index_urls=pip_index_urls,
             is_mpi=is_mpi,
+            pip_extra_args=pip_extra_args,
         )
 
     cmd_line = " ".join([*(command or []), *(((command_args) or []))])
@@ -426,6 +431,7 @@ def get_trainer_crd_from_command_trainer(
             command_args=trainer.args,
             pip_index_urls=trainer.pip_index_urls,
             packages_to_install=trainer.packages_to_install,
+            pip_extra_args=trainer.pip_extra_args,
         )
     else:
         trainer_crd.command = list(trainer.command)

@@ -309,6 +309,27 @@ python train.py --epochs 2"""
         )
         assert "\n".join(result) == expected
 
+    def test_plain_with_installs_and_pip_extra_args(self):
+        runtime = _build_plain_runtime()
+        command = ["python"]
+        command_args = ["train.py"]
+        pip_index_urls = [
+            "https://pypi.org/simple",
+        ]
+        packages_to_install = ["torch"]
+
+        result = utils.get_command_using_user_command(
+            runtime=runtime,
+            command=command,
+            command_args=command_args,
+            pip_index_urls=pip_index_urls,
+            packages_to_install=packages_to_install,
+            pip_extra_args=["--no-cache-dir", "--find-links", "/wheels"],
+        )
+
+        joined = "\n".join(result)
+        assert "--no-warn-script-location --index-url https://pypi.org/simple torch --no-cache-dir --find-links /wheels" in joined
+
 
 class TestGetTrainerCRDFromCommandTrainer:
     def test_plain_runtime_builds_crd_with_env_and_resources(self):

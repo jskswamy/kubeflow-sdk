@@ -16,7 +16,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Callable, Optional, List, Dict
+from typing import Callable, Optional
 
 from kubeflow.trainer.constants import constants
 
@@ -246,25 +246,26 @@ class Initializer:
 class CommandTrainer:
     """Command Trainer configuration.
 
-    Docker-like semantics:
-    - If "command" is set, it becomes the container entrypoint and "args" are passed as container args.
-    - If "command" is not set, defaults are chosen by runtime framework (e.g., torch→torchrun,
-      mpi→mpirun, torch-tune→tune run, otherwise python), and "args" are passed as-is.
+    If "command" is set, it becomes the container entrypoint and "args" are passed as container args.
+    If "command" is not set, defaults are chosen by runtime framework (e.g., torch→torchrun,
+    mpi→mpirun, torch-tune→tune run, otherwise python), and "args" are passed as-is.
 
     Args:
         command (Optional[List[str]]): The command to execute (e.g., ["python"]).
         args (Optional[List[str]]): Positional arguments for the command.
         packages_to_install (Optional[List[str]]): Python packages to install.
         pip_index_urls (List[str]): Index and extra index URLs; first is index-url.
+        pip_extra_args (Optional[List[str]]): Extra pip flags (e.g., ["--no-cache-dir"]).
         num_nodes (Optional[int]): Number of nodes for training.
         resources_per_node (Optional[Dict]): Resources per node.
         env (Optional[Dict[str, str]]): Environment variables.
     """
 
-    command: Optional[List[str]] = None
-    args: Optional[List[str]] = None
-    packages_to_install: Optional[List[str]] = None
-    pip_index_urls: List[str] = field(default_factory=lambda: list(constants.DEFAULT_PIP_INDEX_URLS))
+    command: Optional[list[str]] = None
+    args: Optional[list[str]] = None
+    packages_to_install: Optional[list[str]] = None
+    pip_index_urls: list[str] = field(default_factory=lambda: list(constants.DEFAULT_PIP_INDEX_URLS))
+    pip_extra_args: Optional[list[str]] = None
     num_nodes: Optional[int] = None
-    resources_per_node: Optional[Dict] = None
-    env: Optional[Dict[str, str]] = None
+    resources_per_node: Optional[dict] = None
+    env: Optional[dict[str, str]] = None
