@@ -396,15 +396,15 @@ class TestGetTrainerCRDFromCommandTrainer:
         )
         assert crd.command == expected_command
 
-    def test_pass_through_when_command_without_installs(self):
+    def test_always_bash_wrapped_even_without_installs(self):
         runtime = _build_plain_runtime()
         trainer = types.CommandTrainer(
             command=["python"],
             args=["main.py"],
         )
         crd = utils.get_trainer_crd_from_command_trainer(runtime, trainer)
-        assert crd.command == ["python"]
-        assert crd.args == ["main.py"]
+        # Should wrap into bash -c preserving python main.py
+        assert crd.command == ["bash", "-c", "python main.py"]
 
     def test_preserves_prefix_plain(self):
         runtime = _build_plain_runtime()
